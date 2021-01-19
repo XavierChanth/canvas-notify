@@ -1,0 +1,5 @@
+services:
+  canvas-notify:
+    build: .
+    image: canvas-notify:v1
+    ports: ["9090:3000"]
