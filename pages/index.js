@@ -1,6 +1,92 @@
 import Head from 'next/head'
+import { Card, Switch } from 'antd'
+import { useState } from 'react'
+require('dotenv').config();
+require('isomorphic-fetch');
+import 'antd/dist/antd.min.css';
 
-export default function Home() {
+const CourseRow = ({ data }) => {
+  const { course, item } = data
+  return <Card title={`${item.name} - ${course.name.split(' - ')[1]}`} >
+    <p>Due: {`${item.dueAt.toLocaleDateString()} ${item.dueAt.toLocaleTimeString()}`}</p>
+    <div dangerouslySetInnerHTML={{ __html: item.description }}></div>
+  </Card>
+}
+
+const query = `
+query myQuery{
+  allCourses {
+    name
+    term {
+      endAt
+    }
+    assignmentsConnection {
+      nodes {
+        name
+        description
+        dueAt
+        state
+      }
+    }
+  }
+}
+`;
+
+export const getStaticProps = async (context) => {
+  const res = await fetch('https://learn.ontariotechu.ca/api/graphql', {
+    body: JSON.stringify({ query: query }),
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${process.env.API_TOKEN}`,
+      Accept: 'application/json+canvas-string-ids, application/json, text/plain, */*'
+    }
+  });
+
+  let [month, day, year] = new Date().toLocaleDateString("en-US").split("/");
+  const data = (await res.json()).data.allCourses.filter(item => {
+    return new Date(year, month, day) < new Date(item.term.endAt);
+  })
+
+  if (!data) {
+    return {
+      props: {
+        state: []
+      }
+    }
+  }
+
+  return {
+    props: {
+      state: data
+    }
+  }
+};
+
+export default function Home({ state }) {
+  let [pastToggle, setPastToggle] = useState(false);
+  let [constantToggle, setConstantToggle] = useState(false);
+  let store = []
+  let past = []
+  let constant = []
+  state.forEach((course, index) => {
+    course.assignmentsConnection.nodes.forEach((item, key) => {
+      let data = { course: course, item: { ...item, dueAt: new Date(item.dueAt) } };
+      let [month, day, year] = data.item.dueAt.toLocaleDateString("en-US").split("/")
+      if (year === '1969') {
+        constant.push(data)
+      } else if (data.item.dueAt - new Date() > 0){
+        store.push(data)
+        console.log("gfds")
+      } else {
+        past.push(data)
+        console.log("asdf")
+      }
+    });
+  });
+  let data = store.sort((a, b) => a.item.dueAt - b.item.dueAt).map((item, index) => <CourseRow data={item} key={index} />);
+  let pastData = past.sort((a, b) => a.item.dueAt - b.item.dueAt).map((item, index) => <CourseRow data={item} key={index} />);
+  let constantData = constant.sort((a, b) => a.item.dueAt - b.item.dueAt).map((item, index) => <CourseRow data={item} key={index} />);
   return (
     <div className="container">
       <Head>
@@ -9,55 +95,39 @@ export default function Home() {
       </Head>
 
       <main>
-        <h1 className="title">
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
-        </h1>
+        <h2 className="title">
+          Canvas Notify
+        </h2>
 
-        <p className="description">
-          Get started by editing <code>pages/index.js</code>
-        </p>
-
-        <div className="grid">
-          <a href="https://nextjs.org/docs" className="card">
-            <h3>Documentation &rarr;</h3>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className="card">
-            <h3>Learn &rarr;</h3>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/master/examples"
-            className="card"
-          >
-            <h3>Examples &rarr;</h3>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/import?filter=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className="card"
-          >
-            <h3>Deploy &rarr;</h3>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
+        <div className="space">
+          <h3 style={{ display: "inline-block", marginRight: "2em" }}>Show items without due-dates:</h3>
+          <Switch onChange={checked => setConstantToggle(checked)}/>
         </div>
-      </main>
+        <div hidden={!constantToggle} style={{ width: '100%' }}>
+          <h1>Constant Assignments</h1>
+          <Card.Grid style={{ width: '100%'}}>
+            {constantData}
+          </Card.Grid>
+        </div>
+        <div className="space">
+          <h3 style={{ display: "inline-block", marginRight: "2em" }}>Show items with past due-dates:</h3>
+          <Switch onChange={checked => setPastToggle(checked)} />
+        </div>
+        <div hidden={!pastToggle} style={{ width: '100%' }}>
+          <h1>Past Assignments</h1>
+          <Card.Grid style={{ width: '100%' }}>
+            {pastData}
+          </Card.Grid>
+        </div>
 
-      <footer>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <img src="/vercel.svg" alt="Vercel Logo" className="logo" />
-        </a>
-      </footer>
+        <div style={{ width: '100%' }}>
+          <h1>Current Assignments</h1>
+          <Card.Grid style={{ width: '100%' }}>
+            {data}
+          </Card.Grid>
+        </div>
+
+      </main>
 
       <style jsx>{`
         .container {
@@ -78,28 +148,17 @@ export default function Home() {
           align-items: center;
         }
 
-        footer {
-          width: 100%;
-          height: 100px;
-          border-top: 1px solid #eaeaea;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-        }
-
-        footer img {
-          margin-left: 0.5rem;
-        }
-
-        footer a {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-        }
-
         a {
           color: inherit;
           text-decoration: none;
+        }
+
+        .space {
+          margin: 1rem auto;
+        }
+
+        h1 {
+          font-size: 2rem;
         }
 
         .title a {
@@ -117,76 +176,7 @@ export default function Home() {
           margin: 0;
           line-height: 1.15;
           font-size: 4rem;
-        }
-
-        .title,
-        .description {
           text-align: center;
-        }
-
-        .description {
-          line-height: 1.5;
-          font-size: 1.5rem;
-        }
-
-        code {
-          background: #fafafa;
-          border-radius: 5px;
-          padding: 0.75rem;
-          font-size: 1.1rem;
-          font-family: Menlo, Monaco, Lucida Console, Liberation Mono,
-            DejaVu Sans Mono, Bitstream Vera Sans Mono, Courier New, monospace;
-        }
-
-        .grid {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-wrap: wrap;
-
-          max-width: 800px;
-          margin-top: 3rem;
-        }
-
-        .card {
-          margin: 1rem;
-          flex-basis: 45%;
-          padding: 1.5rem;
-          text-align: left;
-          color: inherit;
-          text-decoration: none;
-          border: 1px solid #eaeaea;
-          border-radius: 10px;
-          transition: color 0.15s ease, border-color 0.15s ease;
-        }
-
-        .card:hover,
-        .card:focus,
-        .card:active {
-          color: #0070f3;
-          border-color: #0070f3;
-        }
-
-        .card h3 {
-          margin: 0 0 1rem 0;
-          font-size: 1.5rem;
-        }
-
-        .card p {
-          margin: 0;
-          font-size: 1.25rem;
-          line-height: 1.5;
-        }
-
-        .logo {
-          height: 1em;
-        }
-
-        @media (max-width: 600px) {
-          .grid {
-            width: 100%;
-            flex-direction: column;
-          }
         }
       `}</style>
 
