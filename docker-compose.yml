@@ -3,3 +3,4 @@ services:
     build: .
     image: canvas-notify:v1
     ports: ["9090:3000"]
+    restart: always

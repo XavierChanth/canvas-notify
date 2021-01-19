@@ -19,9 +19,6 @@ RUN npm build
 # Production image, copy all the files and run next
 FROM node:lts-alpine AS runner
 
-
-LABEL NAME="CANVAS NOTIFY" version="1.0.0" TAG="1.0.0"
-
 ARG X_TAG
 WORKDIR /opt/app
 ENV NODE_ENV=production

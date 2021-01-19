@@ -90,7 +90,7 @@ export default function Home({ state }) {
   return (
     <div className="container">
       <Head>
-        <title>Create Next App</title>
+        <title>Canvas Notify</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
