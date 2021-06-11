@@ -1,5 +1,12 @@
 # Canvas Notify
 
+## Notice - This project is archived.  
+
+I believe (my school at the very least) is limiting bandwidth on the API tokens.
+As such, I am archiving the project.
+
+## Description
+
 I was bored, so I made a program to quickly check when my assignments are due.  
 To configure for your account create an API Token in Canvas.  
 
